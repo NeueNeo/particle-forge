@@ -23,6 +23,8 @@ const vertexShader = `
   // Starfield uniforms
   uniform float uFieldDepth;
   uniform float uFieldRotation;
+  uniform float uSizeRandom;
+  uniform float uTwinkleStrength;
   uniform float uTwinkleSpeed;
   
   attribute float aSize;
@@ -291,22 +293,27 @@ const vertexShader = `
       pos.y = ry;
       pos.z = rz;
       
-      // Size variation - some stars larger (brighter)
-      float sizeFactor = 0.3 + pow(hash1, 3.0) * 2.0;  // Most small, few large
+      // Size variation controlled by uSizeRandom
+      // 0 = all same size, 1 = full random distribution (small to large)
+      float baseSize = 1.0;
+      float randomSize = 0.2 + pow(hash1, 2.5) * 1.8;  // Distribution favoring smaller
+      float sizeFactor = mix(baseSize, randomSize, uSizeRandom);
       
       // Brightness variation
-      float brightness = 0.4 + hash2 * 0.6;
+      float brightness = 0.6 + hash2 * 0.4;
       
-      // Twinkling / scintillation
+      // Twinkling - controlled by strength and speed
+      // Each star has unique phase and slightly different frequency
       float twinklePhase = hash3 * 6.28318;
-      float twinkleFreq = 2.0 + hash1 * 4.0;
-      float twinkle = 1.0 - uTwinkleSpeed * (0.3 * sin(t * twinkleFreq + twinklePhase) + 0.1 * sin(t * twinkleFreq * 2.7 + twinklePhase));
-      twinkle = clamp(twinkle, 0.2, 1.0);
+      float twinkleFreq = uTwinkleSpeed * (0.8 + hash1 * 0.4);
+      float twinkleWave = sin(t * twinkleFreq + twinklePhase);
+      // Strength: 0 = no twinkle (always 1), 1 = full twinkle (0.3 to 1.0)
+      float twinkle = 1.0 - uTwinkleStrength * 0.7 * (0.5 - 0.5 * twinkleWave);
       
       // Distance fade - stars further from camera slightly dimmer
       float dist = length(pos);
-      float distFade = 1.0 - smoothstep(uFieldDepth * 0.3, uFieldDepth, dist);
-      distFade = max(distFade, 0.3);
+      float distFade = 1.0 - smoothstep(uFieldDepth * 0.5, uFieldDepth, dist);
+      distFade = max(distFade, 0.2);
       
       // Combine all factors
       vAlpha = brightness * twinkle * distFade * aLife;
@@ -436,6 +443,8 @@ export function ParticleSystem() {
     spread,
     fieldDepth,
     fieldRotation,
+    sizeRandom,
+    twinkleStrength,
     twinkleSpeed,
   } = useControls('Particles', {
     count: { value: 50000, min: 1000, max: 200000, step: 1000 },
@@ -462,7 +471,9 @@ export function ParticleSystem() {
     ['Starfield']: folder({
       fieldDepth: { value: 50.0, min: 10, max: 150, step: 5, label: 'Field Size' },
       fieldRotation: { value: 0.3, min: 0, max: 2, step: 0.05, label: 'Rotation' },
-      twinkleSpeed: { value: 0.5, min: 0, max: 1, step: 0.05, label: 'Twinkle' },
+      sizeRandom: { value: 0.5, min: 0, max: 1, step: 0.05, label: 'Size Variation' },
+      twinkleStrength: { value: 0.5, min: 0, max: 1, step: 0.05, label: 'Twinkle Strength' },
+      twinkleSpeed: { value: 1.0, min: 0.1, max: 5, step: 0.1, label: 'Twinkle Speed' },
     }, { collapsed: false }),
   })
   
@@ -570,9 +581,11 @@ export function ParticleSystem() {
       materialRef.current.uniforms.uAttractorStrength.value = attractorStrength
       materialRef.current.uniforms.uFieldDepth.value = fieldDepth
       materialRef.current.uniforms.uFieldRotation.value = fieldRotation
+      materialRef.current.uniforms.uSizeRandom.value = sizeRandom
+      materialRef.current.uniforms.uTwinkleStrength.value = twinkleStrength
       materialRef.current.uniforms.uTwinkleSpeed.value = twinkleSpeed
     }
-  }, [size, speed, noiseScale, noiseStrength, spiral, pulse, mode, shape, glow, colorMix, colorPreset, attractorStrength, fieldDepth, fieldRotation, twinkleSpeed])
+  }, [size, speed, noiseScale, noiseStrength, spiral, pulse, mode, shape, glow, colorMix, colorPreset, attractorStrength, fieldDepth, fieldRotation, sizeRandom, twinkleStrength, twinkleSpeed])
   
   const uniforms = useMemo(() => ({
     uTime: { value: 0 },
@@ -591,6 +604,8 @@ export function ParticleSystem() {
     uAttractorStrength: { value: attractorStrength },
     uFieldDepth: { value: fieldDepth },
     uFieldRotation: { value: fieldRotation },
+    uSizeRandom: { value: sizeRandom },
+    uTwinkleStrength: { value: twinkleStrength },
     uTwinkleSpeed: { value: twinkleSpeed },
   }), [])
   
