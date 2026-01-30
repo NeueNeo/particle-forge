@@ -260,8 +260,34 @@ const vertexShader = `
       pos.z = rz;
     }
     
-    // Apply pulse (skip for helix - it handles its own)
-    if (uMode != 4) {
+    // Mode 5: Star Field
+    else if (uMode == 5) {
+      // Stars stay at their positions on a celestial sphere
+      pos = normalize(position) * 50.0;  // Large sphere radius
+      
+      // Very slow rotation (like Earth rotating under the stars)
+      float rotSpeed = t * 0.02 * uSpeed;
+      float rx = pos.x * cos(rotSpeed) - pos.z * sin(rotSpeed);
+      float rz = pos.x * sin(rotSpeed) + pos.z * cos(rotSpeed);
+      pos.x = rx;
+      pos.z = rz;
+      
+      // Twinkling effect - each star has unique phase
+      float twinklePhase = seed * 6.28318;
+      float twinkleSpeed = 2.0 + seed * 3.0;
+      float twinkle = 0.7 + 0.3 * sin(t * twinkleSpeed + twinklePhase);
+      
+      // Additional subtle random flicker
+      float flicker = 0.95 + 0.05 * sin(t * 17.0 + seed * 100.0);
+      
+      // Magnitude-based brightness (seed determines star magnitude)
+      float magnitude = pow(seed, 2.0);  // More dim stars than bright ones
+      
+      vAlpha = aLife * twinkle * flicker * (0.3 + magnitude * 0.7);
+    }
+    
+    // Apply pulse (skip for helix and starfield - they handle their own)
+    if (uMode != 4 && uMode != 5) {
       float pulse = 1.0 + sin(t * 3.0 + length(position)) * uPulse * 0.1;
       pos *= pulse;
       vAlpha = aLife;
@@ -338,7 +364,7 @@ const fragmentShader = `
   }
 `
 
-type Mode = 'galaxy' | 'flowfield' | 'explosion' | 'swarm' | 'helix'
+type Mode = 'galaxy' | 'flowfield' | 'explosion' | 'swarm' | 'helix' | 'starfield'
 
 const modeMap: Record<Mode, number> = {
   galaxy: 0,
@@ -346,6 +372,7 @@ const modeMap: Record<Mode, number> = {
   explosion: 2,
   swarm: 3,
   helix: 4,
+  starfield: 5,
 }
 
 const colorPresets = {
@@ -354,6 +381,7 @@ const colorPresets = {
   ice: { base: '#4488ff', colors: ['#0044ff', '#00ffff', '#ffffff'] },
   toxic: { base: '#00ff44', colors: ['#00ff00', '#88ff00', '#ffff00'] },
   void: { base: '#8800ff', colors: ['#4400ff', '#ff00ff', '#ff0088'] },
+  stars: { base: '#ffffff', colors: ['#ffffff', '#aaccff', '#ffe4b5', '#ffcc99', '#ff8866'] },
 }
 
 export function ParticleSystem() {
@@ -377,7 +405,7 @@ export function ParticleSystem() {
     spread,
   } = useControls('Particles', {
     count: { value: 50000, min: 1000, max: 200000, step: 1000 },
-    mode: { value: 'galaxy' as Mode, options: ['galaxy', 'flowfield', 'explosion', 'swarm', 'helix'] },
+    mode: { value: 'galaxy' as Mode, options: ['galaxy', 'flowfield', 'explosion', 'swarm', 'helix', 'starfield'] },
     colorPreset: { value: 'cyber', options: Object.keys(colorPresets) },
     spread: { value: 15, min: 5, max: 50, step: 1 },
     
@@ -436,6 +464,14 @@ export function ParticleSystem() {
         positions[i3] = (Math.random() - 0.5) * 8  // Initial X spread (shader overrides)
         positions[i3 + 1] = (Math.random() - 0.5) * 40  // Full height range
         positions[i3 + 2] = (Math.random() - 0.5) * 8  // Initial Z spread (shader overrides)
+      } else if (mode === 'starfield') {
+        // Uniform distribution on sphere surface (celestial sphere)
+        const theta = Math.random() * Math.PI * 2
+        const phi = Math.acos(2 * Math.random() - 1)
+        // Shader will normalize and scale to 50 units
+        positions[i3] = Math.sin(phi) * Math.cos(theta)
+        positions[i3 + 1] = Math.sin(phi) * Math.sin(theta)
+        positions[i3 + 2] = Math.cos(phi)
       } else {
         // Sphere distribution for others
         const theta = Math.random() * Math.PI * 2
