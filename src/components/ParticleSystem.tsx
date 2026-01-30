@@ -307,8 +307,10 @@ const vertexShader = `
       float twinklePhase = hash3 * 6.28318;
       float twinkleFreq = uTwinkleSpeed * (0.8 + hash1 * 0.4);
       float twinkleWave = sin(t * twinkleFreq + twinklePhase);
-      // Strength: 0 = no twinkle (always 1), 1 = full twinkle (0.3 to 1.0)
-      float twinkle = 1.0 - uTwinkleStrength * 0.7 * (0.5 - 0.5 * twinkleWave);
+      // Strength: 0 = no twinkle (always 1), 1 = full twinkle
+      // Twinkle ranges from 0.4 to 1.0 to prevent stars disappearing
+      float twinkle = 1.0 - uTwinkleStrength * 0.6 * (0.5 - 0.5 * twinkleWave);
+      twinkle = max(twinkle, 0.4);
       
       // Distance fade - stars further from camera slightly dimmer
       float dist = length(pos);
@@ -319,7 +321,11 @@ const vertexShader = `
       vAlpha = brightness * twinkle * distFade * aLife;
       
       // Override point size for size variation
-      gl_PointSize = aSize * uSize * sizeFactor * (300.0 / length((modelViewMatrix * vec4(pos, 1.0)).xyz));
+      vec4 mvPos = modelViewMatrix * vec4(pos, 1.0);
+      float distToCam = length(mvPos.xyz);
+      // Clamp minimum distance to prevent division issues and flickering
+      distToCam = max(distToCam, 1.0);
+      gl_PointSize = max(aSize * uSize * sizeFactor * (300.0 / distToCam), 0.5);
     }
     
     // Apply pulse (skip for helix and starfield - they handle their own)
