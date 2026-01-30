@@ -610,7 +610,7 @@ export function ParticleSystem() {
   }), [])
   
   return (
-    <points ref={pointsRef}>
+    <points ref={pointsRef} key={`stars-${count}-${mode}`}>
       <bufferGeometry>
         <bufferAttribute
           attach="attributes-position"
