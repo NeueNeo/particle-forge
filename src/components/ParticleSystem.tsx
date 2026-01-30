@@ -391,28 +391,31 @@ const fragmentShader = `
       // Ensure clean edge
       alpha *= 1.0 - smoothstep(0.4, 0.5, dist);
     }
-    // Shape 0: Soft circle
-    else if (uShape == 0) {
-      alpha = 1.0 - smoothstep(0.0, 0.5, dist);
-      alpha = pow(alpha, 1.5);
-    }
-    // Shape 1: Ring
-    else if (uShape == 1) {
-      float ring = smoothstep(0.3, 0.35, dist) * (1.0 - smoothstep(0.45, 0.5, dist));
-      float core = 1.0 - smoothstep(0.0, 0.15, dist);
-      alpha = ring + core * 0.5;
-    }
-    // Shape 2: Star
-    else if (uShape == 2) {
-      float angle = atan(uv.y, uv.x);
-      float star = 0.3 + 0.2 * sin(angle * 5.0 + uTime * 2.0);
-      alpha = 1.0 - smoothstep(star * 0.8, star, dist);
-    }
-    // Shape 3: Square
-    else if (uShape == 3) {
-      vec2 absUv = abs(uv);
-      float box = max(absUv.x, absUv.y);
-      alpha = 1.0 - smoothstep(0.3, 0.4, box);
+    else {
+      // Shape-based rendering for all other modes
+      // Shape 0: Soft circle
+      if (uShape == 0) {
+        alpha = 1.0 - smoothstep(0.0, 0.5, dist);
+        alpha = pow(alpha, 1.5);
+      }
+      // Shape 1: Ring
+      else if (uShape == 1) {
+        float ring = smoothstep(0.3, 0.35, dist) * (1.0 - smoothstep(0.45, 0.5, dist));
+        float core = 1.0 - smoothstep(0.0, 0.15, dist);
+        alpha = ring + core * 0.5;
+      }
+      // Shape 2: Star
+      else if (uShape == 2) {
+        float angle = atan(uv.y, uv.x);
+        float star = 0.3 + 0.2 * sin(angle * 5.0 + uTime * 2.0);
+        alpha = 1.0 - smoothstep(star * 0.8, star, dist);
+      }
+      // Shape 3: Square
+      else if (uShape == 3) {
+        vec2 absUv = abs(uv);
+        float box = max(absUv.x, absUv.y);
+        alpha = 1.0 - smoothstep(0.3, 0.4, box);
+      }
     }
     
     // Add glow
