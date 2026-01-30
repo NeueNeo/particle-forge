@@ -1,11 +1,9 @@
 import { useRef, useMemo, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { useControls, folder, button } from 'leva'
+import { useControls, folder } from 'leva'
 import * as THREE from 'three'
-import { createNoise3D, createNoise4D } from 'simplex-noise'
-
-const noise3D = createNoise3D()
-const noise4D = createNoise4D()
+// simplex-noise available if needed for CPU-side noise
+// import { createNoise3D, createNoise4D } from 'simplex-noise'
 
 // Vertex shader with multiple animation modes
 const vertexShader = `
@@ -612,7 +610,7 @@ export function ParticleSystem() {
       materialRef.current.uniforms.uNoiseStrength.value = noiseStrength
       materialRef.current.uniforms.uSpiral.value = spiral
       materialRef.current.uniforms.uPulse.value = pulse
-      materialRef.current.uniforms.uMode.value = modeMap[mode]
+      materialRef.current.uniforms.uMode.value = modeMap[mode as Mode]
       materialRef.current.uniforms.uShape.value = shape
       materialRef.current.uniforms.uGlow.value = glow
       materialRef.current.uniforms.uColorMix.value = colorMix
@@ -633,7 +631,7 @@ export function ParticleSystem() {
     uNoiseStrength: { value: noiseStrength },
     uSpiral: { value: spiral },
     uPulse: { value: pulse },
-    uMode: { value: modeMap[mode] },
+    uMode: { value: modeMap[mode as Mode] },
     uShape: { value: shape },
     uGlow: { value: glow },
     uBaseColor: { value: new THREE.Color(colorPresets[colorPreset as keyof typeof colorPresets].base) },
@@ -652,39 +650,27 @@ export function ParticleSystem() {
       <bufferGeometry>
         <bufferAttribute
           attach="attributes-position"
-          count={count}
-          array={positions}
-          itemSize={3}
+          args={[positions, 3]}
         />
         <bufferAttribute
           attach="attributes-aSize"
-          count={count}
-          array={sizes}
-          itemSize={1}
+          args={[sizes, 1]}
         />
         <bufferAttribute
           attach="attributes-aVelocity"
-          count={count}
-          array={velocities}
-          itemSize={3}
+          args={[velocities, 3]}
         />
         <bufferAttribute
           attach="attributes-aLife"
-          count={count}
-          array={lives}
-          itemSize={1}
+          args={[lives, 1]}
         />
         <bufferAttribute
           attach="attributes-aSeed"
-          count={count}
-          array={seeds}
-          itemSize={1}
+          args={[seeds, 1]}
         />
         <bufferAttribute
           attach="attributes-aColor"
-          count={count}
-          array={colors}
-          itemSize={3}
+          args={[colors, 3]}
         />
       </bufferGeometry>
       <shaderMaterial

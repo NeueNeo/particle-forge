@@ -26,9 +26,26 @@ function Effects() {
 
   if (!enabled) return null
 
+  if (antialiasing) {
+    return (
+      <EffectComposer>
+        <SMAA />
+        <Bloom
+          luminanceThreshold={bloomThreshold}
+          luminanceSmoothing={0.9}
+          intensity={bloomIntensity}
+          mipmapBlur
+        />
+        <ChromaticAberration
+          blendFunction={BlendFunction.NORMAL}
+          offset={new THREE.Vector2(chromaticOffset, chromaticOffset)}
+        />
+      </EffectComposer>
+    )
+  }
+  
   return (
     <EffectComposer>
-      {antialiasing && <SMAA />}
       <Bloom
         luminanceThreshold={bloomThreshold}
         luminanceSmoothing={0.9}
