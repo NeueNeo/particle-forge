@@ -51,11 +51,12 @@ function App() {
     <div className="app">
       <Leva collapsed={true} oneLineLabels />
       <Canvas
-        camera={{ position: [0, 0, 30], fov: 60 }}
+        camera={{ position: [0, 0, 30], fov: 60, near: 0.1, far: 2000 }}
         gl={{
           antialias: true,
           alpha: false,
           powerPreference: 'high-performance',
+          logarithmicDepthBuffer: true,
         }}
         dpr={[1, 2]}
         onCreated={({ gl }) => {

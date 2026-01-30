@@ -353,6 +353,7 @@ const vertexShader = `
 const fragmentShader = `
   uniform float uTime;
   uniform int uShape;
+  uniform int uMode;
   uniform float uGlow;
   uniform vec3 uBaseColor;
   uniform float uColorMix;
@@ -370,8 +371,15 @@ const fragmentShader = `
     
     float alpha = 1.0;
     
+    // Mode 5 (Starfield): Use gaussian-like falloff for smooth antialiased stars
+    if (uMode == 5) {
+      // Soft gaussian-style star with antialiased edge
+      alpha = exp(-dist * dist * 8.0);
+      // Ensure clean edge
+      alpha *= 1.0 - smoothstep(0.4, 0.5, dist);
+    }
     // Shape 0: Soft circle
-    if (uShape == 0) {
+    else if (uShape == 0) {
       alpha = 1.0 - smoothstep(0.0, 0.5, dist);
       alpha = pow(alpha, 1.5);
     }
@@ -394,8 +402,8 @@ const fragmentShader = `
       alpha = 1.0 - smoothstep(0.3, 0.4, box);
     }
     
-    // Add glow
-    float glow = exp(-dist * 4.0) * uGlow;
+    // Add glow (skip for starfield - handled above)
+    float glow = (uMode != 5) ? exp(-dist * 4.0) * uGlow : 0.0;
     alpha += glow;
     
     // Mix colors
