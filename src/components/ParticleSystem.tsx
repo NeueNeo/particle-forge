@@ -20,6 +20,14 @@ const vertexShader = `
   uniform vec3 uAttractor;
   uniform float uAttractorStrength;
   
+  // Starfield uniforms
+  uniform float uStarLayers;
+  uniform float uTravelSpeed;
+  uniform float uStarSpread;
+  uniform float uFieldDepth;
+  uniform float uFieldRotation;
+  uniform float uTwinkleSpeed;
+  
   attribute float aSize;
   attribute vec3 aVelocity;
   attribute float aLife;
@@ -263,13 +271,11 @@ const vertexShader = `
     // Mode 5: Star Field - Flying through space
     else if (uMode == 5) {
       // Each particle is assigned to a depth layer based on seed
-      float numLayers = 6.0;
+      float numLayers = uStarLayers;
       float layerIndex = floor(seed * numLayers);
-      float layerFrac = fract(seed * numLayers);
       
       // Layer depth cycles over time (creates parallax motion)
-      float cycleSpeed = uSpeed * 0.15;
-      float depth = fract(layerIndex / numLayers + t * cycleSpeed);
+      float depth = fract(layerIndex / numLayers + t * uTravelSpeed);
       
       // Scale based on depth (far = small spread, near = large spread)
       float scale = mix(0.5, 20.0, depth);
@@ -280,12 +286,12 @@ const vertexShader = `
       float hash2 = fract(sin(dot(position.yz + layerIndex * 100.0, vec2(12.9898, 78.233))) * 43758.5453);
       
       // Position stars in a plane that scales with depth
-      pos.x = (hash1 - 0.5) * scale * 3.0;
-      pos.y = (hash2 - 0.5) * scale * 3.0;
-      pos.z = (depth - 0.5) * 60.0;  // Spread along z based on depth
+      pos.x = (hash1 - 0.5) * scale * uStarSpread;
+      pos.y = (hash2 - 0.5) * scale * uStarSpread;
+      pos.z = (depth - 0.5) * uFieldDepth;
       
-      // Slight rotation over time
-      float rot = t * 0.05 * uSpeed;
+      // Rotation over time
+      float rot = t * uFieldRotation;
       float rx = pos.x * cos(rot) - pos.y * sin(rot);
       float ry = pos.x * sin(rot) + pos.y * cos(rot);
       pos.x = rx;
@@ -293,7 +299,7 @@ const vertexShader = `
       
       // Twinkle effect
       float twinklePhase = hash1 * 6.28318;
-      float twinkle = 0.7 + 0.3 * sin(t * 3.0 + twinklePhase);
+      float twinkle = 0.7 + 0.3 * sin(t * uTwinkleSpeed + twinklePhase);
       
       // Fade in/out based on depth (fade in from back, fade out at front)
       float fade = depth * smoothstep(1.0, 0.8, depth);
@@ -421,6 +427,12 @@ export function ParticleSystem() {
     glow,
     colorMix,
     spread,
+    starLayers,
+    travelSpeed,
+    starSpread,
+    fieldDepth,
+    fieldRotation,
+    twinkleSpeed,
   } = useControls('Particles', {
     count: { value: 50000, min: 1000, max: 200000, step: 1000 },
     mode: { value: 'galaxy' as Mode, options: ['galaxy', 'flowfield', 'explosion', 'swarm', 'helix', 'starfield'] },
@@ -441,6 +453,15 @@ export function ParticleSystem() {
       noiseStrength: { value: 2.0, min: 0, max: 10, step: 0.1 },
       spiral: { value: 2.0, min: 0, max: 10, step: 0.1 },
       pulse: { value: 0.5, min: 0, max: 2, step: 0.1 },
+    }, { collapsed: false }),
+    
+    ['Starfield']: folder({
+      starLayers: { value: 6, min: 1, max: 12, step: 1 },
+      travelSpeed: { value: 0.15, min: 0, max: 1, step: 0.01 },
+      starSpread: { value: 3.0, min: 0.5, max: 10, step: 0.1 },
+      fieldDepth: { value: 60.0, min: 10, max: 150, step: 5 },
+      fieldRotation: { value: 0.05, min: 0, max: 0.5, step: 0.01 },
+      twinkleSpeed: { value: 3.0, min: 0, max: 10, step: 0.5 },
     }, { collapsed: false }),
   })
   
@@ -546,8 +567,14 @@ export function ParticleSystem() {
       materialRef.current.uniforms.uGlow.value = glow
       materialRef.current.uniforms.uColorMix.value = colorMix
       materialRef.current.uniforms.uAttractorStrength.value = attractorStrength
+      materialRef.current.uniforms.uStarLayers.value = starLayers
+      materialRef.current.uniforms.uTravelSpeed.value = travelSpeed
+      materialRef.current.uniforms.uStarSpread.value = starSpread
+      materialRef.current.uniforms.uFieldDepth.value = fieldDepth
+      materialRef.current.uniforms.uFieldRotation.value = fieldRotation
+      materialRef.current.uniforms.uTwinkleSpeed.value = twinkleSpeed
     }
-  }, [size, speed, noiseScale, noiseStrength, spiral, pulse, mode, shape, glow, colorMix, colorPreset, attractorStrength])
+  }, [size, speed, noiseScale, noiseStrength, spiral, pulse, mode, shape, glow, colorMix, colorPreset, attractorStrength, starLayers, travelSpeed, starSpread, fieldDepth, fieldRotation, twinkleSpeed])
   
   const uniforms = useMemo(() => ({
     uTime: { value: 0 },
@@ -564,6 +591,12 @@ export function ParticleSystem() {
     uColorMix: { value: colorMix },
     uAttractor: { value: new THREE.Vector3(attractorX, attractorY, attractorZ) },
     uAttractorStrength: { value: attractorStrength },
+    uStarLayers: { value: starLayers },
+    uTravelSpeed: { value: travelSpeed },
+    uStarSpread: { value: starSpread },
+    uFieldDepth: { value: fieldDepth },
+    uFieldRotation: { value: fieldRotation },
+    uTwinkleSpeed: { value: twinkleSpeed },
   }), [])
   
   return (
