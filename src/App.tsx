@@ -83,10 +83,7 @@ function App() {
         {showStats && <Stats />}
       </Canvas>
       
-      <div className="title">
-        <h1>PARTICLE_FORGE</h1>
-        <p>GPU-accelerated particle systems</p>
-      </div>
+{/* Title hidden */}
     </div>
   )
 }
