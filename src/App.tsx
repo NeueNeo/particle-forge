@@ -1,6 +1,6 @@
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Stats } from '@react-three/drei'
-import { EffectComposer, Bloom, ChromaticAberration } from '@react-three/postprocessing'
+import { EffectComposer, Bloom, ChromaticAberration, SMAA } from '@react-three/postprocessing'
 import { BlendFunction } from 'postprocessing'
 import { Leva, useControls } from 'leva'
 import { Suspense } from 'react'
@@ -16,8 +16,9 @@ if (typeof window !== 'undefined') {
 }
 
 function Effects() {
-  const { enabled, bloomIntensity, bloomThreshold, chromaticOffset } = useControls('Post Processing', {
+  const { enabled, antialiasing, bloomIntensity, bloomThreshold, chromaticOffset } = useControls('Post Processing', {
     enabled: { value: false, label: 'Enable' },
+    antialiasing: { value: true, label: 'Antialiasing (SMAA)' },
     bloomIntensity: { value: 0.5, min: 0, max: 5, step: 0.1 },
     bloomThreshold: { value: 0.9, min: 0, max: 1, step: 0.05 },
     chromaticOffset: { value: 0.003, min: 0, max: 0.01, step: 0.001 },
@@ -27,6 +28,7 @@ function Effects() {
 
   return (
     <EffectComposer>
+      {antialiasing && <SMAA />}
       <Bloom
         luminanceThreshold={bloomThreshold}
         luminanceSmoothing={0.9}

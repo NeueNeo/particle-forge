@@ -323,9 +323,22 @@ const vertexShader = `
       // Override point size for size variation
       vec4 mvPos = modelViewMatrix * vec4(pos, 1.0);
       float distToCam = length(mvPos.xyz);
-      // Clamp minimum distance to prevent division issues and flickering
+      // Clamp minimum distance to prevent division issues
       distToCam = max(distToCam, 1.0);
-      gl_PointSize = max(aSize * uSize * sizeFactor * (300.0 / distToCam), 0.5);
+      
+      // Calculate base size with distance attenuation
+      float calcSize = aSize * uSize * sizeFactor * (300.0 / distToCam);
+      
+      // For distant stars: enforce minimum size to prevent sub-pixel flickering
+      // Also fade out very distant small stars instead of letting them flicker
+      float minSize = 1.5;  // Minimum pixel size to prevent aliasing
+      if (calcSize < minSize) {
+        // Fade alpha proportionally as star gets smaller than minimum
+        vAlpha *= calcSize / minSize;
+        calcSize = minSize;
+      }
+      
+      gl_PointSize = calcSize;
     }
     
     // Apply pulse (skip for helix and starfield - they handle their own)
