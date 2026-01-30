@@ -21,9 +21,6 @@ const vertexShader = `
   uniform float uAttractorStrength;
   
   // Starfield uniforms
-  uniform float uStarLayers;
-  uniform float uTravelSpeed;
-  uniform float uStarSpread;
   uniform float uFieldDepth;
   uniform float uFieldRotation;
   uniform float uTwinkleSpeed;
@@ -268,46 +265,46 @@ const vertexShader = `
       pos.z = rz;
     }
     
-    // Mode 5: Star Field - Flying through space
+    // Mode 5: Star Field - Static realistic starfield
     else if (uMode == 5) {
-      // Each particle is assigned to a depth layer based on seed
-      float numLayers = uStarLayers;
-      float layerIndex = floor(seed * numLayers);
+      // Place stars on celestial sphere using original position as seed
+      pos = normalize(position) * uFieldDepth;
       
-      // Layer depth cycles over time (creates parallax motion)
-      float depth = fract(layerIndex / numLayers + t * uTravelSpeed);
+      // Hash for per-star randomness
+      float hash1 = fract(sin(dot(position.xy, vec2(12.9898, 78.233))) * 43758.5453);
+      float hash2 = fract(sin(dot(position.yz, vec2(39.346, 11.135))) * 43758.5453);
+      float hash3 = fract(sin(dot(position.xz, vec2(73.156, 52.235))) * 43758.5453);
       
-      // Scale based on depth (far = small spread, near = large spread)
-      float scale = mix(0.5, 20.0, depth);
+      // Magnitude distribution - exponential falloff (many dim, few bright)
+      // Lower magnitude = brighter star (astronomical convention)
+      float magnitude = pow(hash1, 0.4) * 6.0;  // Range ~0-6 (like visible stars)
       
-      // Use original position as UV-like coordinates for star placement
-      // Hash the position to get consistent random offset per star
-      float hash1 = fract(sin(dot(position.xy + layerIndex * 100.0, vec2(12.9898, 78.233))) * 43758.5453);
-      float hash2 = fract(sin(dot(position.yz + layerIndex * 100.0, vec2(12.9898, 78.233))) * 43758.5453);
+      // Brightness from magnitude (logarithmic - each mag is 2.512x dimmer)
+      float brightness = pow(2.512, -magnitude + 3.0);
+      brightness = clamp(brightness, 0.1, 3.0);
       
-      // Position stars in a plane that scales with depth
-      pos.x = (hash1 - 0.5) * scale * uStarSpread;
-      pos.y = (hash2 - 0.5) * scale * uStarSpread;
-      pos.z = (depth - 0.5) * uFieldDepth;
-      
-      // Rotation over time
-      float rot = t * uFieldRotation;
-      float rx = pos.x * cos(rot) - pos.y * sin(rot);
-      float ry = pos.x * sin(rot) + pos.y * cos(rot);
+      // Very slow optional rotation (like time-lapse of night sky)
+      float rot = t * uFieldRotation * 0.1;
+      float rx = pos.x * cos(rot) - pos.z * sin(rot);
+      float rz = pos.x * sin(rot) + pos.z * cos(rot);
       pos.x = rx;
-      pos.y = ry;
+      pos.z = rz;
       
-      // Twinkle effect
-      float twinklePhase = hash1 * 6.28318;
-      float twinkle = 0.7 + 0.3 * sin(t * uTwinkleSpeed + twinklePhase);
+      // Twinkling / scintillation (atmospheric effect)
+      float twinklePhase = hash2 * 6.28318;
+      float twinkleFreq = 1.0 + hash3 * 3.0;
+      float twinkle = 1.0 - uTwinkleSpeed * 0.1 * (0.5 + 0.5 * sin(t * twinkleFreq + twinklePhase));
+      twinkle = max(twinkle, 0.3);
       
-      // Fade in/out based on depth (fade in from back, fade out at front)
-      float fade = depth * smoothstep(1.0, 0.8, depth);
+      // Star temperature for color (stored in vColor via uStarLayers as temp range)
+      // Will be processed in fragment shader
+      // Temperature range: 3000K (red) to 10000K (blue-white)
+      float tempNorm = pow(hash3, 0.7);  // Bias toward cooler stars
       
-      // Size varies by star (some bigger/brighter)
-      float starSize = 0.3 + hash2 * 0.7;
+      // Pass temperature info through vAlpha's upper bits conceptually
+      // We'll use brightness directly and let color come from preset
       
-      vAlpha = aLife * twinkle * fade * starSize;
+      vAlpha = brightness * twinkle * aLife;
     }
     
     // Apply pulse (skip for helix and starfield - they handle their own)
@@ -427,9 +424,6 @@ export function ParticleSystem() {
     glow,
     colorMix,
     spread,
-    starLayers,
-    travelSpeed,
-    starSpread,
     fieldDepth,
     fieldRotation,
     twinkleSpeed,
@@ -456,12 +450,9 @@ export function ParticleSystem() {
     }, { collapsed: false }),
     
     ['Starfield']: folder({
-      starLayers: { value: 6, min: 1, max: 12, step: 1 },
-      travelSpeed: { value: 0.15, min: 0, max: 1, step: 0.01 },
-      starSpread: { value: 3.0, min: 0.5, max: 10, step: 0.1 },
-      fieldDepth: { value: 60.0, min: 10, max: 150, step: 5 },
-      fieldRotation: { value: 0.05, min: 0, max: 0.5, step: 0.01 },
-      twinkleSpeed: { value: 3.0, min: 0, max: 10, step: 0.5 },
+      fieldDepth: { value: 100.0, min: 30, max: 200, step: 5, label: 'Sphere Radius' },
+      fieldRotation: { value: 0.0, min: 0, max: 1, step: 0.01, label: 'Rotation Speed' },
+      twinkleSpeed: { value: 0.5, min: 0, max: 2, step: 0.1, label: 'Twinkle Intensity' },
     }, { collapsed: false }),
   })
   
@@ -504,11 +495,12 @@ export function ParticleSystem() {
         positions[i3 + 1] = (Math.random() - 0.5) * 40  // Full height range
         positions[i3 + 2] = (Math.random() - 0.5) * 8  // Initial Z spread (shader overrides)
       } else if (mode === 'starfield') {
-        // Grid-like distribution for layered starfield
-        // Shader uses these as hash seeds for star positions
-        positions[i3] = (Math.random() - 0.5) * 2
-        positions[i3 + 1] = (Math.random() - 0.5) * 2
-        positions[i3 + 2] = Math.random()  // Used for layer assignment
+        // Uniform distribution on unit sphere - shader scales to fieldDepth
+        const theta = Math.random() * Math.PI * 2
+        const phi = Math.acos(2 * Math.random() - 1)
+        positions[i3] = Math.sin(phi) * Math.cos(theta)
+        positions[i3 + 1] = Math.sin(phi) * Math.sin(theta)
+        positions[i3 + 2] = Math.cos(phi)
       } else {
         // Sphere distribution for others
         const theta = Math.random() * Math.PI * 2
@@ -567,14 +559,11 @@ export function ParticleSystem() {
       materialRef.current.uniforms.uGlow.value = glow
       materialRef.current.uniforms.uColorMix.value = colorMix
       materialRef.current.uniforms.uAttractorStrength.value = attractorStrength
-      materialRef.current.uniforms.uStarLayers.value = starLayers
-      materialRef.current.uniforms.uTravelSpeed.value = travelSpeed
-      materialRef.current.uniforms.uStarSpread.value = starSpread
       materialRef.current.uniforms.uFieldDepth.value = fieldDepth
       materialRef.current.uniforms.uFieldRotation.value = fieldRotation
       materialRef.current.uniforms.uTwinkleSpeed.value = twinkleSpeed
     }
-  }, [size, speed, noiseScale, noiseStrength, spiral, pulse, mode, shape, glow, colorMix, colorPreset, attractorStrength, starLayers, travelSpeed, starSpread, fieldDepth, fieldRotation, twinkleSpeed])
+  }, [size, speed, noiseScale, noiseStrength, spiral, pulse, mode, shape, glow, colorMix, colorPreset, attractorStrength, fieldDepth, fieldRotation, twinkleSpeed])
   
   const uniforms = useMemo(() => ({
     uTime: { value: 0 },
@@ -591,9 +580,6 @@ export function ParticleSystem() {
     uColorMix: { value: colorMix },
     uAttractor: { value: new THREE.Vector3(attractorX, attractorY, attractorZ) },
     uAttractorStrength: { value: attractorStrength },
-    uStarLayers: { value: starLayers },
-    uTravelSpeed: { value: travelSpeed },
-    uStarSpread: { value: starSpread },
     uFieldDepth: { value: fieldDepth },
     uFieldRotation: { value: fieldRotation },
     uTwinkleSpeed: { value: twinkleSpeed },
