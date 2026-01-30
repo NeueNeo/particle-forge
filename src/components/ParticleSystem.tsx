@@ -260,30 +260,48 @@ const vertexShader = `
       pos.z = rz;
     }
     
-    // Mode 5: Star Field
+    // Mode 5: Star Field - Flying through space
     else if (uMode == 5) {
-      // Stars stay at their positions on a celestial sphere
-      pos = normalize(position) * 50.0;  // Large sphere radius
+      // Each particle is assigned to a depth layer based on seed
+      float numLayers = 6.0;
+      float layerIndex = floor(seed * numLayers);
+      float layerFrac = fract(seed * numLayers);
       
-      // Very slow rotation (like Earth rotating under the stars)
-      float rotSpeed = t * 0.02 * uSpeed;
-      float rx = pos.x * cos(rotSpeed) - pos.z * sin(rotSpeed);
-      float rz = pos.x * sin(rotSpeed) + pos.z * cos(rotSpeed);
+      // Layer depth cycles over time (creates parallax motion)
+      float cycleSpeed = uSpeed * 0.15;
+      float depth = fract(layerIndex / numLayers + t * cycleSpeed);
+      
+      // Scale based on depth (far = small spread, near = large spread)
+      float scale = mix(0.5, 20.0, depth);
+      
+      // Use original position as UV-like coordinates for star placement
+      // Hash the position to get consistent random offset per star
+      float hash1 = fract(sin(dot(position.xy + layerIndex * 100.0, vec2(12.9898, 78.233))) * 43758.5453);
+      float hash2 = fract(sin(dot(position.yz + layerIndex * 100.0, vec2(12.9898, 78.233))) * 43758.5453);
+      
+      // Position stars in a plane that scales with depth
+      pos.x = (hash1 - 0.5) * scale * 3.0;
+      pos.y = (hash2 - 0.5) * scale * 3.0;
+      pos.z = (depth - 0.5) * 60.0;  // Spread along z based on depth
+      
+      // Slight rotation over time
+      float rot = t * 0.05 * uSpeed;
+      float rx = pos.x * cos(rot) - pos.y * sin(rot);
+      float ry = pos.x * sin(rot) + pos.y * cos(rot);
       pos.x = rx;
-      pos.z = rz;
+      pos.y = ry;
       
-      // Twinkling effect - each star has unique phase
-      float twinklePhase = seed * 6.28318;
-      float twinkleSpeed = 2.0 + seed * 3.0;
-      float twinkle = 0.7 + 0.3 * sin(t * twinkleSpeed + twinklePhase);
+      // Twinkle effect
+      float twinklePhase = hash1 * 6.28318;
+      float twinkle = 0.7 + 0.3 * sin(t * 3.0 + twinklePhase);
       
-      // Additional subtle random flicker
-      float flicker = 0.95 + 0.05 * sin(t * 17.0 + seed * 100.0);
+      // Fade in/out based on depth (fade in from back, fade out at front)
+      float fade = depth * smoothstep(1.0, 0.8, depth);
       
-      // Magnitude-based brightness (seed determines star magnitude)
-      float magnitude = pow(seed, 2.0);  // More dim stars than bright ones
+      // Size varies by star (some bigger/brighter)
+      float starSize = 0.3 + hash2 * 0.7;
       
-      vAlpha = aLife * twinkle * flicker * (0.3 + magnitude * 0.7);
+      vAlpha = aLife * twinkle * fade * starSize;
     }
     
     // Apply pulse (skip for helix and starfield - they handle their own)
@@ -465,13 +483,11 @@ export function ParticleSystem() {
         positions[i3 + 1] = (Math.random() - 0.5) * 40  // Full height range
         positions[i3 + 2] = (Math.random() - 0.5) * 8  // Initial Z spread (shader overrides)
       } else if (mode === 'starfield') {
-        // Uniform distribution on sphere surface (celestial sphere)
-        const theta = Math.random() * Math.PI * 2
-        const phi = Math.acos(2 * Math.random() - 1)
-        // Shader will normalize and scale to 50 units
-        positions[i3] = Math.sin(phi) * Math.cos(theta)
-        positions[i3 + 1] = Math.sin(phi) * Math.sin(theta)
-        positions[i3 + 2] = Math.cos(phi)
+        // Grid-like distribution for layered starfield
+        // Shader uses these as hash seeds for star positions
+        positions[i3] = (Math.random() - 0.5) * 2
+        positions[i3 + 1] = (Math.random() - 0.5) * 2
+        positions[i3 + 2] = Math.random()  // Used for layer assignment
       } else {
         // Sphere distribution for others
         const theta = Math.random() * Math.PI * 2
