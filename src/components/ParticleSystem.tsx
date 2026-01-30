@@ -415,8 +415,8 @@ const fragmentShader = `
       alpha = 1.0 - smoothstep(0.3, 0.4, box);
     }
     
-    // Add glow (skip for starfield - handled above)
-    float glow = (uMode != 5) ? exp(-dist * 4.0) * uGlow : 0.0;
+    // Add glow
+    float glow = exp(-dist * 4.0) * uGlow;
     alpha += glow;
     
     // Mix colors
@@ -513,11 +513,11 @@ export function ParticleSystem() {
   })
   
   const { attractorX, attractorY, attractorZ, attractorStrength } = useControls('Attractor', {
-    attractorX: { value: 0, min: -20, max: 20, step: 0.5, render: () => mode !== 'starfield' },
-    attractorY: { value: 0, min: -20, max: 20, step: 0.5, render: () => mode !== 'starfield' },
-    attractorZ: { value: 0, min: -20, max: 20, step: 0.5, render: () => mode !== 'starfield' },
-    attractorStrength: { value: 0.5, min: 0, max: 1, step: 0.05, render: () => mode !== 'starfield' },
-  }, { collapsed: false, render: () => mode !== 'starfield' })
+    attractorX: { value: 0, min: -20, max: 20, step: 0.5, render: (get) => get('Particles.mode') !== 'starfield' },
+    attractorY: { value: 0, min: -20, max: 20, step: 0.5, render: (get) => get('Particles.mode') !== 'starfield' },
+    attractorZ: { value: 0, min: -20, max: 20, step: 0.5, render: (get) => get('Particles.mode') !== 'starfield' },
+    attractorStrength: { value: 0.5, min: 0, max: 1, step: 0.05, render: (get) => get('Particles.mode') !== 'starfield' },
+  }, { collapsed: false, render: (get) => get('Particles.mode') !== 'starfield' })
   
   // Generate particle attributes
   const { positions, sizes, velocities, lives, seeds, colors } = useMemo(() => {
