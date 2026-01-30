@@ -487,7 +487,7 @@ export function ParticleSystem() {
     colorPreset: { value: 'cyber', options: Object.keys(colorPresets) },
     
     [' Appearance']: folder({
-      size: { value: 0.1, min: 0.1, max: 5, step: 0.1 },
+      size: { value: 0.1, min: 0.1, max: 1, step: 0.05 },
       spread: { value: 15, min: 5, max: 50, step: 1, render: (get) => get('Particles.mode') !== 'starfield' },
       shape: { value: 0, min: 0, max: 3, step: 1, label: 'shape (0-3)' },
       additiveBlend: { value: false, label: 'Additive Glow' },
