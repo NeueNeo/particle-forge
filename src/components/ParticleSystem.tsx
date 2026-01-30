@@ -484,11 +484,11 @@ export function ParticleSystem() {
   })
   
   const { attractorX, attractorY, attractorZ, attractorStrength } = useControls('Attractor', {
-    attractorX: { value: 0, min: -20, max: 20, step: 0.5 },
-    attractorY: { value: 0, min: -20, max: 20, step: 0.5 },
-    attractorZ: { value: 0, min: -20, max: 20, step: 0.5 },
-    attractorStrength: { value: 0.5, min: 0, max: 1, step: 0.05 },
-  }, { collapsed: false })
+    attractorX: { value: 0, min: -20, max: 20, step: 0.5, render: () => mode !== 'starfield' },
+    attractorY: { value: 0, min: -20, max: 20, step: 0.5, render: () => mode !== 'starfield' },
+    attractorZ: { value: 0, min: -20, max: 20, step: 0.5, render: () => mode !== 'starfield' },
+    attractorStrength: { value: 0.5, min: 0, max: 1, step: 0.05, render: () => mode !== 'starfield' },
+  }, { collapsed: false, render: () => mode !== 'starfield' })
   
   // Generate particle attributes
   const { positions, sizes, velocities, lives, seeds, colors } = useMemo(() => {
