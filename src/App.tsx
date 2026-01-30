@@ -20,7 +20,7 @@ function Effects() {
     enabled: { value: false, label: 'Enable' },
     antialiasing: { value: true, label: 'Antialiasing (SMAA)' },
     bloomIntensity: { value: 0.5, min: 0, max: 5, step: 0.1 },
-    bloomThreshold: { value: 0.9, min: 0, max: 1, step: 0.05 },
+    bloomThreshold: { value: 0.5, min: 0, max: 1, step: 0.05 },
     chromaticOffset: { value: 0.003, min: 0, max: 0.01, step: 0.001 },
   }, { collapsed: false })
 

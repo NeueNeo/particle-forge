@@ -423,7 +423,15 @@ const fragmentShader = `
     vec3 finalColor = mix(uBaseColor, vColor, uColorMix);
     
     // Add core brightness
-    finalColor += vec3(1.0 - smoothstep(0.0, 0.2, dist)) * 0.5;
+    float coreBrightness = 1.0 - smoothstep(0.0, 0.2, dist);
+    finalColor += vec3(coreBrightness) * 0.5;
+    
+    // For starfield: boost brightness so bloom can work
+    // Brighter stars (higher vAlpha) get extra boost to exceed bloom threshold
+    if (uMode == 5) {
+      float bloomBoost = 1.0 + vAlpha * 1.5;  // Up to 2.5x for brightest stars
+      finalColor *= bloomBoost;
+    }
     
     gl_FragColor = vec4(finalColor, alpha * vAlpha);
   }
