@@ -1,0 +1,91 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #030308;
+}
+
+.app {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.title {
+  position: absolute;
+  bottom: 30px;
+  left: 30px;
+  color: white;
+  font-family: 'Courier New', monospace;
+  pointer-events: none;
+  z-index: 100;
+}
+
+.title h1 {
+  font-size: 2rem;
+  font-weight: 300;
+  letter-spacing: 0.5em;
+  color: #00ffff;
+  text-shadow: 
+    0 0 10px rgba(0, 255, 255, 0.5),
+    0 0 20px rgba(0, 255, 255, 0.3),
+    0 0 40px rgba(0, 255, 255, 0.2);
+  margin-bottom: 5px;
+}
+
+.title p {
+  font-size: 0.75rem;
+  letter-spacing: 0.3em;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+}
+
+/* Leva overrides for cyberpunk feel */
+:root {
+  --leva-colors-elevation1: rgba(10, 10, 20, 0.9);
+  --leva-colors-elevation2: rgba(20, 20, 40, 0.9);
+  --leva-colors-elevation3: rgba(30, 30, 60, 0.9);
+  --leva-colors-accent1: #00ffff;
+  --leva-colors-accent2: #ff00ff;
+  --leva-colors-accent3: #00ff88;
+  --leva-colors-highlight1: rgba(0, 255, 255, 0.1);
+  --leva-colors-highlight2: rgba(0, 255, 255, 0.2);
+  --leva-colors-highlight3: rgba(0, 255, 255, 0.3);
+  --leva-fonts-mono: 'Courier New', monospace;
+  --leva-fonts-sans: 'Courier New', monospace;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 255, 255, 0.3);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 255, 255, 0.5);
+}
+
+/* Stats panel positioning */
+.stats {
+  position: absolute !important;
+  top: auto !important;
+  bottom: 30px !important;
+  right: 30px !important;
+  left: auto !important;
+}
+
+/* end */
