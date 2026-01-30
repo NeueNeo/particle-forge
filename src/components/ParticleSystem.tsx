@@ -467,20 +467,20 @@ export function ParticleSystem() {
     }, { collapsed: false }),
     
     ['Animation']: folder({
-      speed: { value: 0.5, min: 0, max: 3, step: 0.1 },
-      noiseScale: { value: 0.1, min: 0.01, max: 0.5, step: 0.01 },
-      noiseStrength: { value: 2.0, min: 0, max: 10, step: 0.1 },
-      spiral: { value: 2.0, min: 0, max: 10, step: 0.1 },
-      pulse: { value: 0.5, min: 0, max: 2, step: 0.1 },
-    }, { collapsed: false }),
+      speed: { value: 0.5, min: 0, max: 3, step: 0.1, render: (get) => get('Particles.mode') !== 'starfield' },
+      noiseScale: { value: 0.1, min: 0.01, max: 0.5, step: 0.01, render: (get) => get('Particles.mode') !== 'starfield' },
+      noiseStrength: { value: 2.0, min: 0, max: 10, step: 0.1, render: (get) => get('Particles.mode') !== 'starfield' },
+      spiral: { value: 2.0, min: 0, max: 10, step: 0.1, render: (get) => get('Particles.mode') !== 'starfield' },
+      pulse: { value: 0.5, min: 0, max: 2, step: 0.1, render: (get) => get('Particles.mode') !== 'starfield' },
+    }, { collapsed: false, render: (get) => get('Particles.mode') !== 'starfield' }),
     
     ['Starfield']: folder({
       fieldDepth: { value: 50.0, min: 10, max: 150, step: 5, label: 'Field Size' },
-      fieldRotation: { value: 0.3, min: 0, max: 2, step: 0.05, label: 'Rotation' },
+      fieldRotation: { value: 0.3, min: 0, max: 2, step: 0.05, label: 'Rotation Speed' },
       sizeRandom: { value: 0.5, min: 0, max: 1, step: 0.05, label: 'Size Variation' },
       twinkleStrength: { value: 0.5, min: 0, max: 1, step: 0.05, label: 'Twinkle Strength' },
       twinkleSpeed: { value: 1.0, min: 0.1, max: 5, step: 0.1, label: 'Twinkle Speed' },
-    }, { collapsed: false }),
+    }, { collapsed: false, render: (get) => get('Particles.mode') === 'starfield' }),
   })
   
   const { attractorX, attractorY, attractorZ, attractorStrength } = useControls('Attractor', {
