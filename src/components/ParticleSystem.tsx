@@ -265,46 +265,54 @@ const vertexShader = `
       pos.z = rz;
     }
     
-    // Mode 5: Star Field - Static realistic starfield
+    // Mode 5: Star Field - 3D volume starfield
     else if (uMode == 5) {
-      // Place stars on celestial sphere using original position as seed
-      pos = normalize(position) * uFieldDepth;
+      // Stars already distributed in 3D volume, use position directly
+      pos = position * uFieldDepth;
       
-      // Hash for per-star randomness
+      // Hash for per-star randomness (consistent per star)
       float hash1 = fract(sin(dot(position.xy, vec2(12.9898, 78.233))) * 43758.5453);
       float hash2 = fract(sin(dot(position.yz, vec2(39.346, 11.135))) * 43758.5453);
       float hash3 = fract(sin(dot(position.xz, vec2(73.156, 52.235))) * 43758.5453);
       
-      // Magnitude distribution - exponential falloff (many dim, few bright)
-      // Lower magnitude = brighter star (astronomical convention)
-      float magnitude = pow(hash1, 0.4) * 6.0;  // Range ~0-6 (like visible stars)
+      // Slow rotation of entire starfield
+      float rotX = t * uFieldRotation * 0.1;
+      float rotY = t * uFieldRotation * 0.15;
       
-      // Brightness from magnitude (logarithmic - each mag is 2.512x dimmer)
-      float brightness = pow(2.512, -magnitude + 3.0);
-      brightness = clamp(brightness, 0.1, 3.0);
-      
-      // Very slow optional rotation (like time-lapse of night sky)
-      float rot = t * uFieldRotation * 0.1;
-      float rx = pos.x * cos(rot) - pos.z * sin(rot);
-      float rz = pos.x * sin(rot) + pos.z * cos(rot);
+      // Rotate around Y axis
+      float rx = pos.x * cos(rotY) - pos.z * sin(rotY);
+      float rz = pos.x * sin(rotY) + pos.z * cos(rotY);
       pos.x = rx;
       pos.z = rz;
       
-      // Twinkling / scintillation (atmospheric effect)
-      float twinklePhase = hash2 * 6.28318;
-      float twinkleFreq = 1.0 + hash3 * 3.0;
-      float twinkle = 1.0 - uTwinkleSpeed * 0.1 * (0.5 + 0.5 * sin(t * twinkleFreq + twinklePhase));
-      twinkle = max(twinkle, 0.3);
+      // Rotate around X axis
+      float ry = pos.y * cos(rotX) - pos.z * sin(rotX);
+      rz = pos.y * sin(rotX) + pos.z * cos(rotX);
+      pos.y = ry;
+      pos.z = rz;
       
-      // Star temperature for color (stored in vColor via uStarLayers as temp range)
-      // Will be processed in fragment shader
-      // Temperature range: 3000K (red) to 10000K (blue-white)
-      float tempNorm = pow(hash3, 0.7);  // Bias toward cooler stars
+      // Size variation - some stars larger (brighter)
+      float sizeFactor = 0.3 + pow(hash1, 3.0) * 2.0;  // Most small, few large
       
-      // Pass temperature info through vAlpha's upper bits conceptually
-      // We'll use brightness directly and let color come from preset
+      // Brightness variation
+      float brightness = 0.4 + hash2 * 0.6;
       
-      vAlpha = brightness * twinkle * aLife;
+      // Twinkling / scintillation
+      float twinklePhase = hash3 * 6.28318;
+      float twinkleFreq = 2.0 + hash1 * 4.0;
+      float twinkle = 1.0 - uTwinkleSpeed * (0.3 * sin(t * twinkleFreq + twinklePhase) + 0.1 * sin(t * twinkleFreq * 2.7 + twinklePhase));
+      twinkle = clamp(twinkle, 0.2, 1.0);
+      
+      // Distance fade - stars further from camera slightly dimmer
+      float dist = length(pos);
+      float distFade = 1.0 - smoothstep(uFieldDepth * 0.3, uFieldDepth, dist);
+      distFade = max(distFade, 0.3);
+      
+      // Combine all factors
+      vAlpha = brightness * twinkle * distFade * aLife;
+      
+      // Override point size for size variation
+      gl_PointSize = aSize * uSize * sizeFactor * (300.0 / length((modelViewMatrix * vec4(pos, 1.0)).xyz));
     }
     
     // Apply pulse (skip for helix and starfield - they handle their own)
@@ -314,10 +322,12 @@ const vertexShader = `
       vAlpha = aLife;
     }
     
-    // Calculate size with distance attenuation
+    // Calculate size with distance attenuation (skip for starfield - handles its own)
     vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
-    float sizeAtten = 300.0 / -mvPosition.z;
-    gl_PointSize = aSize * uSize * sizeAtten;
+    if (uMode != 5) {
+      float sizeAtten = 300.0 / -mvPosition.z;
+      gl_PointSize = aSize * uSize * sizeAtten;
+    }
     
     gl_Position = projectionMatrix * mvPosition;
     
@@ -450,9 +460,9 @@ export function ParticleSystem() {
     }, { collapsed: false }),
     
     ['Starfield']: folder({
-      fieldDepth: { value: 100.0, min: 30, max: 200, step: 5, label: 'Sphere Radius' },
-      fieldRotation: { value: 0.0, min: 0, max: 1, step: 0.01, label: 'Rotation Speed' },
-      twinkleSpeed: { value: 0.5, min: 0, max: 2, step: 0.1, label: 'Twinkle Intensity' },
+      fieldDepth: { value: 50.0, min: 10, max: 150, step: 5, label: 'Field Size' },
+      fieldRotation: { value: 0.3, min: 0, max: 2, step: 0.05, label: 'Rotation' },
+      twinkleSpeed: { value: 0.5, min: 0, max: 1, step: 0.05, label: 'Twinkle' },
     }, { collapsed: false }),
   })
   
@@ -495,12 +505,11 @@ export function ParticleSystem() {
         positions[i3 + 1] = (Math.random() - 0.5) * 40  // Full height range
         positions[i3 + 2] = (Math.random() - 0.5) * 8  // Initial Z spread (shader overrides)
       } else if (mode === 'starfield') {
-        // Uniform distribution on unit sphere - shader scales to fieldDepth
-        const theta = Math.random() * Math.PI * 2
-        const phi = Math.acos(2 * Math.random() - 1)
-        positions[i3] = Math.sin(phi) * Math.cos(theta)
-        positions[i3 + 1] = Math.sin(phi) * Math.sin(theta)
-        positions[i3 + 2] = Math.cos(phi)
+        // 3D volume distribution (cube spread) - like drei Stars
+        // randFloatSpread equivalent: random in range [-1, 1]
+        positions[i3] = (Math.random() - 0.5) * 2
+        positions[i3 + 1] = (Math.random() - 0.5) * 2
+        positions[i3 + 2] = (Math.random() - 0.5) * 2
       } else {
         // Sphere distribution for others
         const theta = Math.random() * Math.PI * 2
