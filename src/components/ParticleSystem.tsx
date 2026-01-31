@@ -339,8 +339,43 @@ const vertexShader = `
       gl_PointSize = calcSize;
     }
     
-    // Apply pulse (skip for helix and starfield - they handle their own)
-    if (uMode != 4 && uMode != 5) {
+    // Mode 6: Drift - calming ambient particle drift
+    else if (uMode == 6) {
+      pos = position * uFieldDepth * 0.5;
+      
+      // Slow noise-driven drift - creates that calming flow
+      float t = uTime * uSpeed * 0.3;
+      float noiseX = snoise(vec3(pos * 0.08 + t * 0.3)) * 3.0;
+      float noiseY = snoise(vec3(pos.yzx * 0.08 + t * 0.2)) * 2.0;
+      float noiseZ = snoise(vec3(pos.zxy * 0.08 + t * 0.25)) * 3.0;
+      
+      pos += vec3(noiseX, noiseY, noiseZ);
+      
+      // Gentle vertical bob
+      pos.y += sin(t * 2.0 + aSeed * 6.28) * 0.8;
+      
+      // Slow rotation of entire field
+      float rot = t * 0.1;
+      float rx = pos.x * cos(rot) - pos.z * sin(rot);
+      float rz = pos.x * sin(rot) + pos.z * cos(rot);
+      pos.x = rx;
+      pos.z = rz;
+      
+      // Distance-based alpha fade
+      vec4 mvPos = modelViewMatrix * vec4(pos, 1.0);
+      float dist = length(mvPos.xyz);
+      vAlpha = aLife * smoothstep(80.0, 10.0, dist);
+      
+      // Gentle twinkle
+      float twinkle = sin(uTime * 2.5 + aSeed * 8.0) * 0.3 + 0.7;
+      vAlpha *= twinkle;
+      
+      // Size with distance attenuation
+      gl_PointSize = aSize * uSize * (300.0 / -mvPos.z);
+    }
+    
+    // Apply pulse (skip for helix, starfield, and drift - they handle their own)
+    if (uMode != 4 && uMode != 5 && uMode != 6) {
       float pulse = 1.0 + sin(t * 3.0 + length(position)) * uPulse * 0.1;
       pos *= pulse;
       vAlpha = aLife;
@@ -438,7 +473,7 @@ const fragmentShader = `
   }
 `
 
-type Mode = 'galaxy' | 'flowfield' | 'explosion' | 'swarm' | 'helix' | 'starfield'
+type Mode = 'galaxy' | 'flowfield' | 'explosion' | 'swarm' | 'helix' | 'starfield' | 'drift'
 
 const modeMap: Record<Mode, number> = {
   galaxy: 0,
@@ -447,6 +482,7 @@ const modeMap: Record<Mode, number> = {
   swarm: 3,
   helix: 4,
   starfield: 5,
+  drift: 6,
 }
 
 const colorPresets = {
@@ -484,7 +520,7 @@ export function ParticleSystem() {
     twinkleSpeed,
   } = useControls('Particles', {
     count: { value: 50000, min: 1000, max: 200000, step: 1000 },
-    mode: { value: 'galaxy' as Mode, options: ['galaxy', 'flowfield', 'explosion', 'swarm', 'helix', 'starfield'] },
+    mode: { value: 'galaxy' as Mode, options: ['galaxy', 'flowfield', 'explosion', 'swarm', 'helix', 'starfield', 'drift'] },
     colorPreset: { value: 'cyber', options: Object.keys(colorPresets) },
     
     [' Appearance']: folder({
@@ -498,10 +534,10 @@ export function ParticleSystem() {
     
     ['Animation']: folder({
       speed: { value: 0.5, min: 0, max: 3, step: 0.1, render: (get) => get('Particles.mode') !== 'starfield' },
-      noiseScale: { value: 0.1, min: 0.01, max: 0.5, step: 0.01, render: (get) => get('Particles.mode') !== 'starfield' },
-      noiseStrength: { value: 2.0, min: 0, max: 10, step: 0.1, render: (get) => get('Particles.mode') !== 'starfield' },
-      spiral: { value: 2.0, min: 0, max: 10, step: 0.1, render: (get) => get('Particles.mode') !== 'starfield' },
-      pulse: { value: 0.5, min: 0, max: 2, step: 0.1, render: (get) => get('Particles.mode') !== 'starfield' },
+      noiseScale: { value: 0.1, min: 0.01, max: 0.5, step: 0.01, render: (get) => !['starfield', 'drift'].includes(get('Particles.mode')) },
+      noiseStrength: { value: 2.0, min: 0, max: 10, step: 0.1, render: (get) => !['starfield', 'drift'].includes(get('Particles.mode')) },
+      spiral: { value: 2.0, min: 0, max: 10, step: 0.1, render: (get) => !['starfield', 'drift'].includes(get('Particles.mode')) },
+      pulse: { value: 0.5, min: 0, max: 2, step: 0.1, render: (get) => !['starfield', 'drift'].includes(get('Particles.mode')) },
     }, { collapsed: false, render: (get) => get('Particles.mode') !== 'starfield' }),
     
     ['Starfield']: folder({
@@ -514,11 +550,11 @@ export function ParticleSystem() {
   })
   
   const { attractorX, attractorY, attractorZ, attractorStrength } = useControls('Attractor', {
-    attractorX: { value: 0, min: -20, max: 20, step: 0.5, render: (get) => get('Particles.mode') !== 'starfield' },
-    attractorY: { value: 0, min: -20, max: 20, step: 0.5, render: (get) => get('Particles.mode') !== 'starfield' },
-    attractorZ: { value: 0, min: -20, max: 20, step: 0.5, render: (get) => get('Particles.mode') !== 'starfield' },
-    attractorStrength: { value: 0.5, min: 0, max: 1, step: 0.05, render: (get) => get('Particles.mode') !== 'starfield' },
-  }, { collapsed: false, render: (get) => get('Particles.mode') !== 'starfield' })
+    attractorX: { value: 0, min: -20, max: 20, step: 0.5 },
+    attractorY: { value: 0, min: -20, max: 20, step: 0.5 },
+    attractorZ: { value: 0, min: -20, max: 20, step: 0.5 },
+    attractorStrength: { value: 0.5, min: 0, max: 1, step: 0.05 },
+  }, { collapsed: false, render: (get) => get('Particles.mode') === 'swarm' })
   
   // Generate particle attributes
   const { positions, sizes, velocities, lives, seeds, colors } = useMemo(() => {
@@ -557,6 +593,15 @@ export function ParticleSystem() {
         positions[i3] = (Math.random() - 0.5) * 2
         positions[i3 + 1] = (Math.random() - 0.5) * 2
         positions[i3 + 2] = (Math.random() - 0.5) * 2
+      } else if (mode === 'drift') {
+        // Sphere distribution for calming ambient drift
+        const theta = Math.random() * Math.PI * 2
+        const phi = Math.random() * Math.PI
+        const radius = Math.random() * 2
+        
+        positions[i3] = Math.sin(phi) * Math.cos(theta) * radius
+        positions[i3 + 1] = (Math.random() - 0.5) * 3
+        positions[i3 + 2] = Math.sin(phi) * Math.sin(theta) * radius
       } else {
         // Sphere distribution for others
         const theta = Math.random() * Math.PI * 2
