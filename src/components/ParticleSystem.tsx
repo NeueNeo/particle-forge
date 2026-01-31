@@ -509,7 +509,6 @@ export function ParticleSystem() {
     spiral,
     pulse,
     shape,
-    additiveBlend,
     glow,
     colorMix,
     spread,
@@ -524,10 +523,9 @@ export function ParticleSystem() {
     colorPreset: { value: 'cyber', options: Object.keys(colorPresets) },
     
     [' Appearance']: folder({
-      size: { value: 0.1, min: 0.1, max: 1, step: 0.05 },
+      size: { value: 0.05, min: 0.05, max: 0.5, step: 0.025 },
       spread: { value: 15, min: 5, max: 50, step: 1, render: (get) => get('Particles.mode') !== 'starfield' },
       shape: { value: 0, min: 0, max: 3, step: 1, label: 'shape (0-3)' },
-      additiveBlend: { value: false, label: 'Additive Glow' },
       glow: { value: 0, min: 0, max: 2, step: 0.1 },
       colorMix: { value: 0.7, min: 0, max: 1, step: 0.05 },
     }, { collapsed: false }),
@@ -725,7 +723,7 @@ export function ParticleSystem() {
         fragmentShader={fragmentShader}
         transparent
         depthWrite={false}
-        blending={additiveBlend ? THREE.AdditiveBlending : THREE.NormalBlending}
+        blending={THREE.NormalBlending}
         toneMapped={false}
       />
     </points>

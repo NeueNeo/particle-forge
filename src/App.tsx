@@ -1,7 +1,7 @@
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Stats } from '@react-three/drei'
-import { EffectComposer, Bloom, ChromaticAberration, SMAA } from '@react-three/postprocessing'
-import { BlendFunction } from 'postprocessing'
+import { EffectComposer, Bloom, ChromaticAberration, SMAA, ToneMapping } from '@react-three/postprocessing'
+import { BlendFunction, ToneMappingMode } from 'postprocessing'
 import { Leva, useControls } from 'leva'
 import { Suspense } from 'react'
 import * as THREE from 'three'
@@ -16,36 +16,18 @@ if (typeof window !== 'undefined') {
 }
 
 function Effects() {
-  const { enabled, antialiasing, bloomIntensity, bloomThreshold, chromaticOffset } = useControls('Post Processing', {
+  const { enabled, bloomIntensity, bloomThreshold, chromaticOffset } = useControls('Post Processing', {
     enabled: { value: false, label: 'Enable' },
-    antialiasing: { value: true, label: 'Antialiasing (SMAA)' },
-    bloomIntensity: { value: 0.5, min: 0, max: 5, step: 0.1 },
+    bloomIntensity: { value: 0, min: 0, max: 5, step: 0.1 },
     bloomThreshold: { value: 0.5, min: 0, max: 1, step: 0.05 },
-    chromaticOffset: { value: 0.003, min: 0, max: 0.01, step: 0.001 },
+    chromaticOffset: { value: 0, min: 0, max: 0.01, step: 0.001 },
   }, { collapsed: false })
 
   if (!enabled) return null
 
-  if (antialiasing) {
-    return (
-      <EffectComposer>
-        <SMAA />
-        <Bloom
-          luminanceThreshold={bloomThreshold}
-          luminanceSmoothing={0.9}
-          intensity={bloomIntensity}
-          mipmapBlur
-        />
-        <ChromaticAberration
-          blendFunction={BlendFunction.NORMAL}
-          offset={new THREE.Vector2(chromaticOffset, chromaticOffset)}
-        />
-      </EffectComposer>
-    )
-  }
-  
   return (
-    <EffectComposer>
+    <EffectComposer enableNormalPass={false} multisampling={0}>
+      <SMAA />
       <Bloom
         luminanceThreshold={bloomThreshold}
         luminanceSmoothing={0.9}
@@ -56,6 +38,7 @@ function Effects() {
         blendFunction={BlendFunction.NORMAL}
         offset={new THREE.Vector2(chromaticOffset, chromaticOffset)}
       />
+      <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
     </EffectComposer>
   )
 }
